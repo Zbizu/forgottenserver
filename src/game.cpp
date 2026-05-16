@@ -4978,6 +4978,16 @@ void Game::playerReportRuleViolation(uint32_t playerId, const std::string& targe
 	g_events->eventPlayerOnReportRuleViolation(player, targetName, reportType, reportReason, comment, translation);
 }
 
+void Game::sendStoreDemo(uint32_t playerId)
+{
+	Player* player = getPlayerByID(playerId);
+	if (!player) {
+		return;
+	}
+
+	player->sendStoreDemo();
+}
+
 void Game::playerReportBug(uint32_t playerId, const std::string& message, const Position& position, uint8_t category)
 {
 	Player* player = getPlayerByID(playerId);

@@ -4456,6 +4456,13 @@ void Player::sendModalWindow(const ModalWindow& modalWindow)
 	client->sendModalWindow(modalWindow);
 }
 
+void Player::sendStoreDemo()
+{
+	if (client) {
+		client->sendStoreDemo();
+	}
+}
+
 void Player::clearModalWindows()
 {
 	modalWindows.clear();

@@ -838,6 +838,7 @@ class Player final : public Creature, public Cylinder
 			}
 		}
 		void sendModalWindow(const ModalWindow& modalWindow);
+		void sendStoreDemo();
 
 		//container
 		void sendAddContainerItem(const Container* container, const Item* item);

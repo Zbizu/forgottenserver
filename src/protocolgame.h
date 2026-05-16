@@ -119,6 +119,7 @@ class ProtocolGame final : public Protocol
 		void parseToggleMount(NetworkMessage& msg);
 
 		void parseModalWindowAnswer(NetworkMessage& msg);
+		void parseGameStoreRequest(NetworkMessage& msg);
 
 		void parseBrowseField(NetworkMessage& msg);
 		void parseSeekInContainer(NetworkMessage& msg);
@@ -255,6 +256,7 @@ class ProtocolGame final : public Protocol
 
 		//messages
 		void sendModalWindow(const ModalWindow& modalWindow);
+		void sendStoreDemo();
 
 		//Help functions
 

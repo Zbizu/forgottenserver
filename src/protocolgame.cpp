@@ -569,9 +569,10 @@ void ProtocolGame::parsePacket(NetworkMessage& msg)
 		case 0xF7: parseMarketCancelOffer(msg); break;
 		case 0xF8: parseMarketAcceptOffer(msg); break;
 		case 0xF9: parseModalWindowAnswer(msg); break;
+		case 0xFA: parseGameStoreRequest(msg); break;
 
 		default:
-			// std::cout << "Player: " << player->getName() << " sent an unknown packet header: 0x" << std::hex << static_cast<uint16_t>(recvbyte) << std::dec << "!" << std::endl;
+			//std::cout << "Player: " << player->getName() << " sent an unknown packet header: 0x" << std::hex << static_cast<uint16_t>(recvbyte) << std::dec << "!" << std::endl;
 			break;
 	}
 
@@ -1215,6 +1216,11 @@ void ProtocolGame::parseModalWindowAnswer(NetworkMessage& msg)
 	uint8_t button = msg.getByte();
 	uint8_t choice = msg.getByte();
 	addGameTask(&Game::playerAnswerModalWindow, player->getID(), id, button, choice);
+}
+
+void ProtocolGame::parseGameStoreRequest(NetworkMessage& msg)
+{
+	addGameTask(&Game::sendStoreDemo, player->getID());
 }
 
 void ProtocolGame::parseBrowseField(NetworkMessage& msg)
@@ -2551,7 +2557,7 @@ void ProtocolGame::sendAddCreature(const Creature* creature, const Position& pos
 	msg.addByte(0x00); // can change pvp framing option
 	msg.addByte(0x00); // expert mode button enabled
 
-	msg.add<uint16_t>(0x00); // URL (string) to ingame store images
+	msg.addString("http://127.0.0.1/images/store/"); // URL (string) to ingame store images
 	msg.add<uint16_t>(25); // premium coin package size
 
 	writeToOutputBuffer(msg);
@@ -2927,6 +2933,95 @@ void ProtocolGame::sendModalWindow(const ModalWindow& modalWindow)
 	msg.addByte(modalWindow.defaultEscapeButton);
 	msg.addByte(modalWindow.defaultEnterButton);
 	msg.addByte(modalWindow.priority ? 0x01 : 0x00);
+
+	writeToOutputBuffer(msg);
+}
+
+void ProtocolGame::sendStoreDemo()
+{
+	NetworkMessage msg;
+
+	// packet 1 - categories
+	msg.addByte(251);
+
+	constexpr bool isUpdate = true;
+	msg.addByte(isUpdate ? 1 : 0); // bool isUpdate
+	if (isUpdate) {
+		msg.add<uint32_t>(1000); // coins
+		msg.add<uint32_t>(900); // transferable coins
+	}
+
+	struct StoreOffer {
+		uint32_t offerId;
+		std::string offerName;
+		std::string description;
+		uint32_t price;
+		bool highlighted = false;
+		bool disabled = false; // if disabled == true, needs string: reason
+		std::vector<std::string> icons;
+		// suboffers
+	};
+
+	struct StoreCategory {
+		std::string name;
+		std::string parent;
+		std::string tab;
+		bool highlighted = false; // there is also highlight state 2, bytes after this when state is 2: [u32 saleEndsAt, u32 priceBeforeDiscount], also applies to individual offers
+		std::vector<std::string> icons;
+		std::vector<StoreOffer> offers;
+	};
+
+	static const std::vector<StoreCategory> categories{
+		// category
+		{
+			.name = "Blessings",
+			.parent = "",
+			.tab = "",
+			.highlighted = false,
+			.icons = {"Category_Blessings.png"},
+			.offers = {
+				// offer
+				{
+					.offerId = 4200,
+					.offerName = "Death Redemption",
+					.description = "test description for this offer",
+					.price = 100,
+					.icons = {"Death_Redemption.png"},			
+				}
+			}
+		}
+	};
+
+	msg.add<uint16_t>(categories.size());
+	for (const auto& category : categories) {
+		msg.addString(category.name);
+		msg.addString(category.parent);
+		msg.addByte(category.highlighted ? 1 : 0);
+		msg.addByte(category.icons.size());
+		for (const auto& icon : category.icons) {
+			msg.addString(icon);
+		}
+		msg.addString(category.parent);
+	}
+
+	// packet 2 - offers in category
+	const auto& category = categories.front();
+	msg.addByte(252);
+	msg.addString(category.name);
+	msg.add<uint16_t>(category.offers.size());
+	for (const auto& offer : category.offers) {
+		msg.add<uint32_t>(offer.offerId);
+		msg.addString(offer.offerName);
+		msg.addString(offer.description);
+		msg.add<uint32_t>(offer.price);
+		msg.addByte(offer.highlighted ? 1 : 0);
+		msg.addByte(0); // disabled = false
+		msg.addByte(offer.icons.size());
+		for (const auto& icon : offer.icons) {
+			msg.addString(icon);
+		}
+		msg.add<uint16_t>(0); // suboffer count (bundles)
+	}
 
 	writeToOutputBuffer(msg);
 }
